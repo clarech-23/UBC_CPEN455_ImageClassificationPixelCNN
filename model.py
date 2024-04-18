@@ -7,7 +7,7 @@ my_bidict = bidict({'Class0': 0,
                     'Class2': 2,
                     'Class3': 3})
 NUM_CLASSES = len(my_bidict)
-MAX_LEN = 256
+MAX_LEN = 128
 
 
 class PixelCNNLayer_up(nn.Module):
@@ -58,28 +58,24 @@ class PixelCNNLayer_down(nn.Module):
         return u, ul
 
 
-# ChatGPT: https://chat.openai.com/share/871fcd72-f54f-4cbd-8e89-6862dc6a5bbf
+# TODO: FIX LATER
 class AbsolutePositionalEncoding(nn.Module):
 
     def __init__(self, d_model):
-        super().__init__()
+        super(AbsolutePositionalEncoding, self).__init__()
         # Initialize parameters for both dimensions
-        self.W = nn.Parameter(torch.empty((1, d_model)))
-        nn.init.normal_(self.W)
+        self.position_embedding = nn.Embedding(d_model, d_model)
 
     def forward(self, x):
         """
         args:
-            x: shape B x D
+            x: shape B
         return:
             out: shape B x D
         """
-        x = x.unsqueeze(1)  # Reshape x to B x 1 x D to match positional encoding dimensions
-        positional_encoding = self.W.unsqueeze(0)  # Shape 1 x 1 x D
-        out = x + positional_encoding  # Broadcasting adds the positional encoding to each input in the batch
-        out = out.squeeze(1)  # Reshape back to B x D
-
-        return out
+        # Retrieve positional encoding for input positions
+        position_encodings = self.position_embedding(x)
+        return position_encodings
 
 
 class PixelCNN(nn.Module):
@@ -91,8 +87,7 @@ class PixelCNN(nn.Module):
         else :
             raise Exception('right now only concat elu is supported as resnet nonlinearity.')
 
-        # Embedding layer for labels
-        self.positional_encoding = AbsolutePositionalEncoding(d_model=NUM_CLASSES)  # TODO: MAX_LEN or NUM_CLASSES?
+        self.positional_encoding = AbsolutePositionalEncoding(d_model=MAX_LEN)  # TODO: Changes made
 
         self.nr_filters = nr_filters
         self.input_channels = input_channels
@@ -132,26 +127,22 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
     def forward(self, x, labels, sample=False):
-        # Input embedding # TODO: This is causing labels to go out of bounds?
-        # labels_int = []
-        # for label in labels:
-        #     labels_int.append(my_bidict[label])
-        # # labels_int = [my_bidict[label] for label in labels]
-        #
-        # # Convert to one-hot
-        # labels_one_hot = []
-        # for i in labels_int:
-        #     one_hot_vector = torch.zeros(NUM_CLASSES, device=x.device)
-        #     one_hot_vector[i] = 1
-        #     labels_one_hot.append(one_hot_vector)
-        #
-        # input_embedding = torch.stack(labels_one_hot)
-        # print("Input Embedding Shape: {}".format(input_embedding.shape))  # TODO: Is this B x D? What is D?
+        # TODO: Input of APE should be B int nums
+        labels_int = [my_bidict[label] for label in labels]  # TODO: This should be a tensor
+        labels_int = torch.LongTensor(labels_int).to(device=x.device)
 
         # TODO: Absolute Positional Encoding
-        # ape = self.positional_encoding(input_embedding)
-        # print("Positional Encoding Shape: {}".format(ape.shape))
+        ape = self.positional_encoding(labels_int)
+        print("APE shape: {}".format(ape.shape))
+        print("x shape: {}".format(x.shape))
 
+        # TODO: Add Positional Embedding
+        ape = ape.unsqueeze(-1).unsqueeze(-1)  # Add two dimensions at the end, so shape becomes [B, D, 1, 1]
+        ape = ape.expand(-1, -1, 32, 32)  # Expand to match the spatial dimensions of x, shape becomes [B, D, H, W] # TODO: CHANGE THE 32
+        transform = nn.Conv2d(ape.shape[1], x.shape[1], kernel_size=1).to(ape.device)  # Using a 1x1 conv to match the channels
+        ape = transform(ape)
+        print("APE transformed shape: {}".format(ape.shape))
+        x = x + ape  # TODO: Need to make the dimensions match
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
@@ -167,8 +158,8 @@ class PixelCNN(nn.Module):
 
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)  # TODO: x becomes feature map after concatenation with padding
-        u_list = [self.u_init(x)]  # 16, 4, 32, 32
-        ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]  # 16, 40, 32, 32
+        u_list = [self.u_init(x)]
+        ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
 
         for i in range(3):
             # resnet block
@@ -197,10 +188,6 @@ class PixelCNN(nn.Module):
         x_out = self.nin_out(F.elu(ul))
 
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
-
-        # TODO: Add positional embedding on x_out
-        print("x_out shape: {}".format(x_out.shape))
-        # x_out = x_out + ape
 
         return x_out
     

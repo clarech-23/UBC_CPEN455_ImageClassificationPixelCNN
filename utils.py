@@ -179,7 +179,6 @@ def sample(model, sample_batch_size, obs, sample_op):
     with torch.no_grad():
         data = torch.zeros(sample_batch_size, obs[0], obs[1], obs[2])
         data = data.to(next(model.parameters()).device)
-        # TODO: Add random labels?
         labels = ['Class1', 'Class3', 'Class0', 'Class2', 'Class2', 'Class1', 'Class1', 'Class0', 'Class0', 'Class0', 'Class0', 'Class1', 'Class3', 'Class1', 'Class3', 'Class3']
         for i in range(obs[1]):
             for j in range(obs[2]):
