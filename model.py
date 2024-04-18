@@ -74,12 +74,10 @@ class AbsolutePositionalEncoding(nn.Module):
         return:
             out: shape B x D
         """
-        print(x.shape)
         x = x.unsqueeze(1)  # Reshape x to B x 1 x D to match positional encoding dimensions
         positional_encoding = self.W.unsqueeze(0)  # Shape 1 x 1 x D
         out = x + positional_encoding  # Broadcasting adds the positional encoding to each input in the batch
         out = out.squeeze(1)  # Reshape back to B x D
-        print(out.shape)
 
         return out
 
@@ -94,7 +92,7 @@ class PixelCNN(nn.Module):
             raise Exception('right now only concat elu is supported as resnet nonlinearity.')
 
         # Embedding layer for labels
-        self.positional_encoding = AbsolutePositionalEncoding(MAX_LEN)  # TODO: Need to change params
+        self.positional_encoding = AbsolutePositionalEncoding(d_model=NUM_CLASSES)  # TODO: MAX_LEN or NUM_CLASSES?
 
         self.nr_filters = nr_filters
         self.input_channels = input_channels
@@ -133,26 +131,27 @@ class PixelCNN(nn.Module):
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
 
-
     def forward(self, x, labels, sample=False):
-        # x = self.positional_encoding(x)
-        # print("Positional Encoding Done!")
-
-        # # Input embedding
+        # Input embedding # TODO: This is causing labels to go out of bounds?
         # labels_int = []
         # for label in labels:
-        #     print(label)
         #     labels_int.append(my_bidict[label])
+        # # labels_int = [my_bidict[label] for label in labels]
         #
         # # Convert to one-hot
         # labels_one_hot = []
         # for i in labels_int:
-        #     one_hot_vector = torch.zeros(NUM_CLASSES)
+        #     one_hot_vector = torch.zeros(NUM_CLASSES, device=x.device)
         #     one_hot_vector[i] = 1
         #     labels_one_hot.append(one_hot_vector)
-
+        #
         # input_embedding = torch.stack(labels_one_hot)
-        # print(input_embedding.shape)  # TODO: Is this B x D? What is D?
+        # print("Input Embedding Shape: {}".format(input_embedding.shape))  # TODO: Is this B x D? What is D?
+
+        # TODO: Absolute Positional Encoding
+        # ape = self.positional_encoding(input_embedding)
+        # print("Positional Encoding Shape: {}".format(ape.shape))
+
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
@@ -200,6 +199,8 @@ class PixelCNN(nn.Module):
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
 
         # TODO: Add positional embedding on x_out
+        print("x_out shape: {}".format(x_out.shape))
+        # x_out = x_out + ape
 
         return x_out
     
