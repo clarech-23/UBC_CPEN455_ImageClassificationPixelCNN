@@ -13,7 +13,7 @@ rescaling     = lambda x : (x - .5) * 2.
 rescaling_inv = lambda x : .5 * x  + .5
 replicate_color_channel = lambda x : x.repeat(3,1,1)
 
-my_bidict = bidict({'Class0': 0, 
+my_bidict = bidict({'Class0': 0,
                     'Class1': 1,
                     'Class2': 2,
                     'Class3': 3})
@@ -36,7 +36,7 @@ class CPEN455Dataset(Dataset):
         # Convert DataFrame to a list of tuples
         self.samples = list(df.itertuples(index=False, name=None))
         self.samples = [(os.path.join(ROOT_DIR, path), label) for path, label in self.samples]
-        
+
     def __len__(self):
         return len(self.samples)
 
@@ -54,7 +54,7 @@ class CPEN455Dataset(Dataset):
         if self.transform:
           image = self.transform(image)
         return image, category_name
-    
+
     def get_all_images(self, label):
         return [img for img, cat in self.samples if cat == label]
 
@@ -67,13 +67,13 @@ def show_images(images, categories, mode:str):
         plt.savefig(mode + '_test.png')
 
 if __name__ == '__main__':
-    
+
     transform_32 = Compose([
         Resize((32, 32)),  # Resize images to 32 * 32
         rescaling
     ])
     dataset_list = ['train', 'validation', 'test']
-    
+
     for mode in dataset_list:
         print(f"Mode: {mode}")
         dataset = CPEN455Dataset(root_dir='./data', transform=transform_32, mode=mode)
@@ -84,4 +84,3 @@ if __name__ == '__main__':
             images = torch.round(rescaling_inv(images) * 255).type(torch.uint8)
             show_images(images, categories, mode)
             break  # We only want to see one batch of 4 images in this example
-        

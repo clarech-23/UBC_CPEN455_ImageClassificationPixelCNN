@@ -6,7 +6,7 @@ from torch.optim import lr_scheduler
 from torchvision import datasets, transforms
 import wandb
 from utils import *
-from model import * 
+from model import *
 from dataset import *
 from tqdm import tqdm
 from pprint import pprint
@@ -19,10 +19,10 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         model.train()
     else:
         model.eval()
-        
+
     deno = args.batch_size * np.prod(args.obs) * np.log(2.)
     loss_tracker = mean_tracker()
-    
+
     for batch_idx, item in enumerate(tqdm(data_loader)):
         model_input, labels = item
         model_input = model_input.to(device)
@@ -33,19 +33,19 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        
+
     if args.en_wandb:
         wandb.log({mode + "-Average-BPD": loss_tracker.get_mean()})
         wandb.log({mode + "-epoch": epoch})
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument('-w', '--en_wandb', type=bool, default=False,
                             help='Enable wandb logging')
     parser.add_argument('-t', '--tag', type=str, default='default',
                             help='Tag for this run')
-    
+
     # sampling
     parser.add_argument('-c', '--sampling_interval', type=int, default=5,
                         help='sampling interval')
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                         help='Restore training from previous model checkpoint?')
     parser.add_argument('--obs', type=tuple, default=(3, 32, 32),
                         help='Observation shape')
-    
+
     # model
     parser.add_argument('-q', '--nr_resnet', type=int, default=5,
                         help='Number of residual blocks per stage of the model')
@@ -84,15 +84,15 @@ if __name__ == '__main__':
                         default=5000, help='How many epochs to run in total?')
     parser.add_argument('-s', '--seed', type=int, default=1,
                         help='Random seed to use')
-    
+
     args = parser.parse_args()
     pprint(args.__dict__)
     check_dir_and_create(args.save_dir)
-    
+
     # reproducibility
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    
+
     model_name = 'pcnn_' + args.dataset + "_"
     model_path = args.save_dir + '/'
     if args.load_params is not None:
@@ -101,9 +101,9 @@ if __name__ == '__main__':
     else:
         model_name = model_name + 'from_scratch'
         model_path = model_path + model_name + '/'
-    
+
     job_name = "PCNN_Training_" + "dataset:" + args.dataset + "_" + args.tag
-    
+
     if args.en_wandb:
         # start a new wandb run to track this script
         wandb.init(
@@ -123,57 +123,60 @@ if __name__ == '__main__':
 
     # set data
     if "mnist" in args.dataset:
+        print("MNIST ")
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor(), rescaling, replicate_color_channel])
-        train_loader = torch.utils.data.DataLoader(datasets.MNIST(args.data_dir, download=True, 
-                            train=True, transform=ds_transforms), batch_size=args.batch_size, 
+        train_loader = torch.utils.data.DataLoader(datasets.MNIST(args.data_dir, download=True,
+                            train=True, transform=ds_transforms), batch_size=args.batch_size,
                                 shuffle=True, **kwargs)
-        
-        test_loader  = torch.utils.data.DataLoader(datasets.MNIST(args.data_dir, train=False, 
+
+        test_loader  = torch.utils.data.DataLoader(datasets.MNIST(args.data_dir, train=False,
                         transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
-    
+
     elif "cifar" in args.dataset:
+        print("CIFAR ")
         ds_transforms = transforms.Compose([transforms.ToTensor(), rescaling])
         if args.dataset == "cifar10":
-            train_loader = torch.utils.data.DataLoader(datasets.CIFAR10(args.data_dir, train=True, 
+            train_loader = torch.utils.data.DataLoader(datasets.CIFAR10(args.data_dir, train=True,
                 download=True, transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
-            
-            test_loader  = torch.utils.data.DataLoader(datasets.CIFAR10(args.data_dir, train=False, 
+
+            test_loader  = torch.utils.data.DataLoader(datasets.CIFAR10(args.data_dir, train=False,
                         transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
         elif args.dataset == "cifar100":
-            train_loader = torch.utils.data.DataLoader(datasets.CIFAR100(args.data_dir, train=True, 
+            train_loader = torch.utils.data.DataLoader(datasets.CIFAR100(args.data_dir, train=True,
                 download=True, transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
-            
-            test_loader  = torch.utils.data.DataLoader(datasets.CIFAR100(args.data_dir, train=False, 
+
+            test_loader  = torch.utils.data.DataLoader(datasets.CIFAR100(args.data_dir, train=False,
                         transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
         else:
             raise Exception('{} dataset not in {cifar10, cifar100}'.format(args.dataset))
-    
+
     elif "cpen455" in args.dataset:
+        print("CPEN455")
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
-        train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'train', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
+        train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
+                                                                  mode = 'train',
+                                                                  transform=ds_transforms),
+                                                   batch_size=args.batch_size,
+                                                   shuffle=True,
                                                    **kwargs)
-        test_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'test', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
-                                                   **kwargs)
-        val_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'validation', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
+        # test_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
+        #                                                           mode = 'test',
+        #                                                           transform=ds_transforms),
+        #                                            batch_size=args.batch_size,
+        #                                            shuffle=True,
+        #                                            **kwargs)
+        val_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
+                                                                  mode = 'validation',
+                                                                  transform=ds_transforms),
+                                                   batch_size=args.batch_size,
+                                                   shuffle=True,
                                                    **kwargs)
     else:
         raise Exception('{} dataset not in {mnist, cifar, cpen455}'.format(args.dataset))
-    
+
     args.obs = (3, 32, 32)
     input_channels = args.obs[0]
-    
+
     loss_op = lambda real, fake: discretized_mix_logistic_loss(real, fake)
     sample_op = lambda x: sample_from_discretized_mix_logistic(x, args.nr_logistic_mix)
 
@@ -187,28 +190,31 @@ if __name__ == '__main__':
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay)
-    
+
     for epoch in tqdm(range(args.max_epochs)):
-        train_or_test(model = model, 
-                      data_loader = train_loader, 
-                      optimizer = optimizer, 
-                      loss_op = loss_op, 
-                      device = device, 
-                      args = args, 
-                      epoch = epoch, 
-                      mode = 'training')
-        
-        # decrease learning rate
-        scheduler.step()
+        print("Training")
         train_or_test(model = model,
-                      data_loader = test_loader,
+                      data_loader = train_loader,
                       optimizer = optimizer,
                       loss_op = loss_op,
                       device = device,
                       args = args,
                       epoch = epoch,
-                      mode = 'test')
-        
+                      mode = 'training')
+
+        # decrease learning rate
+        scheduler.step()
+        print("Testing")
+        # train_or_test(model = model,
+        #               data_loader = test_loader,
+        #               optimizer = optimizer,
+        #               loss_op = loss_op,
+        #               device = device,
+        #               args = args,
+        #               epoch = epoch,
+        #               mode = 'test')
+
+        print("Validation")
         train_or_test(model = model,
                       data_loader = val_loader,
                       optimizer = optimizer,
@@ -217,14 +223,14 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'val')
-        
+
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
             sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
             sample_t = rescaling_inv(sample_t)
             save_images(sample_t, args.sample_dir)
             sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))
-            
+
             gen_data_dir = args.sample_dir
             ref_data_dir = args.data_dir +'/test'
             paths = [gen_data_dir, ref_data_dir]
@@ -233,12 +239,12 @@ if __name__ == '__main__':
                 print("Dimension {:d} works! fid score: {}".format(192, fid_score))
             except:
                 print("Dimension {:d} fails!".format(192))
-                
+
             if args.en_wandb:
                 wandb.log({"samples": sample_result,
                             "FID": fid_score})
-        
-        if (epoch + 1) % args.save_interval == 0: 
+
+        if (epoch + 1) % args.save_interval == 0:
             if not os.path.exists("models"):
                 os.makedirs("models")
             torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch))

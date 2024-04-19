@@ -128,21 +128,24 @@ class PixelCNN(nn.Module):
 
     def forward(self, x, labels, sample=False):
         # TODO: Input of APE should be B int nums
+        print(labels)
         labels_int = [my_bidict[label] for label in labels]  # TODO: This should be a tensor
         labels_int = torch.LongTensor(labels_int).to(device=x.device)
 
+        # labels_int = torch.randint(0, 4, (16,)).to(x.device)
+
         # TODO: Absolute Positional Encoding
         ape = self.positional_encoding(labels_int)
-        print("APE shape: {}".format(ape.shape))
-        print("x shape: {}".format(x.shape))
+        # print("APE shape: {}".format(ape.shape))
+        # print("x shape: {}".format(x.shape))
 
         # TODO: Add Positional Embedding
         ape = ape.unsqueeze(-1).unsqueeze(-1)  # Add two dimensions at the end, so shape becomes [B, D, 1, 1]
         ape = ape.expand(-1, -1, 32, 32)  # Expand to match the spatial dimensions of x, shape becomes [B, D, H, W] # TODO: CHANGE THE 32
         transform = nn.Conv2d(ape.shape[1], x.shape[1], kernel_size=1).to(ape.device)  # Using a 1x1 conv to match the channels
         ape = transform(ape)
-        print("APE transformed shape: {}".format(ape.shape))
-        x = x + ape  # TODO: Need to make the dimensions match
+        # print("APE transformed shape: {}".format(ape.shape))
+        x = x + ape
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
@@ -157,7 +160,7 @@ class PixelCNN(nn.Module):
             x = torch.cat((x, padding), 1)
 
         ###      UP PASS    ###
-        x = x if sample else torch.cat((x, self.init_padding), 1)  # TODO: x becomes feature map after concatenation with padding
+        x = x if sample else torch.cat((x, self.init_padding), 1)
         u_list = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
 
@@ -190,8 +193,8 @@ class PixelCNN(nn.Module):
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
 
         return x_out
-    
-    
+
+
 class random_classifier(nn.Module):
     def __init__(self, NUM_CLASSES):
         super(random_classifier, self).__init__()
@@ -204,5 +207,4 @@ class random_classifier(nn.Module):
         torch.save(self.state_dict(), 'models/conditional_pixelcnn.pth')
     def forward(self, x, device):
         return torch.randint(0, self.NUM_CLASSES, (x.shape[0],)).to(device)
-    
-    
+
