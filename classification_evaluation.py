@@ -19,8 +19,11 @@ NUM_CLASSES = len(my_bidict)
 # And get the predicted label, which is a tensor of shape (batch_size,)
 # Begin of your code
 def get_label(model, model_input, device):
-    answer = model(model_input, device)
-    return answer
+    logits = model(model_input)
+    probs = torch.softmax(logits, dim=1)
+    predicted_labels = torch.argmax(probs, dim=1)
+    # answer = model(model_input, device)
+    return predicted_labels
 # End of your code
 
 def classifier(model, data_loader, device):
@@ -54,26 +57,27 @@ if __name__ == '__main__':
     kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
 
     ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
-    dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                            mode = args.mode, 
+    dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
+                                                            mode = args.mode,
                                                             transform=ds_transforms), 
-                                             batch_size=args.batch_size, 
+                                             batch_size=args.batch_size,
                                              shuffle=True, 
                                              **kwargs)
 
     #Write your code here
     #You should replace the random classifier with your trained model
     #Begin of your code
-    model = random_classifier(NUM_CLASSES)
+    #model = random_classifier(NUM_CLASSES)
+    model = PixelCNN(nr_resnet=1, nr_filters=40, nr_logistic_mix=5)
     #End of your code
-    
+
     model = model.to(device)
     #Attention: the path of the model is fixed to 'models/conditional_pixelcnn.pth'
     #You should save your model to this path
     model.load_state_dict(torch.load('models/conditional_pixelcnn.pth'))
     model.eval()
     print('model parameters loaded')
-    acc = classifier(model = model, data_loader = dataloader, device = device)
+    acc = classifier(model=model, data_loader=dataloader, device=device)
     print(f"Accuracy: {acc}")
         
         

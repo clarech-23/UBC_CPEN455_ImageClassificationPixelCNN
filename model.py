@@ -126,26 +126,24 @@ class PixelCNN(nn.Module):
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
 
-    def forward(self, x, labels, sample=False):
-        # TODO: Input of APE should be B int nums
-        print(labels)
-        labels_int = [my_bidict[label] for label in labels]  # TODO: This should be a tensor
-        labels_int = torch.LongTensor(labels_int).to(device=x.device)
+    def forward(self, x, labels=None, sample=False):
+        if labels is not None:
+            # TODO: Input of APE should be B int nums
+            labels_int = [my_bidict[label] for label in labels]
+            labels_int = torch.LongTensor(labels_int).to(device=x.device)
 
-        # labels_int = torch.randint(0, 4, (16,)).to(x.device)
+            # TODO: Absolute Positional Encoding
+            ape = self.positional_encoding(labels_int)
+            # print("APE shape: {}".format(ape.shape))
+            # print("x shape: {}".format(x.shape))
 
-        # TODO: Absolute Positional Encoding
-        ape = self.positional_encoding(labels_int)
-        # print("APE shape: {}".format(ape.shape))
-        # print("x shape: {}".format(x.shape))
-
-        # TODO: Add Positional Embedding
-        ape = ape.unsqueeze(-1).unsqueeze(-1)  # Add two dimensions at the end, so shape becomes [B, D, 1, 1]
-        ape = ape.expand(-1, -1, 32, 32)  # Expand to match the spatial dimensions of x, shape becomes [B, D, H, W] # TODO: CHANGE THE 32
-        transform = nn.Conv2d(ape.shape[1], x.shape[1], kernel_size=1).to(ape.device)  # Using a 1x1 conv to match the channels
-        ape = transform(ape)
-        # print("APE transformed shape: {}".format(ape.shape))
-        x = x + ape
+            # TODO: Add Positional Embedding
+            ape = ape.unsqueeze(-1).unsqueeze(-1)  # Add two dimensions at the end, so shape becomes [B, D, 1, 1]
+            ape = ape.expand(-1, -1, 32, 32)  # Expand to match the spatial dimensions of x, shape becomes [B, D, H, W] # TODO: CHANGE THE 32
+            transform = nn.Conv2d(ape.shape[1], x.shape[1], kernel_size=1).to(ape.device)  # Using a 1x1 conv to match the channels
+            ape = transform(ape)
+            # print("APE transformed shape: {}".format(ape.shape))
+            x = x + ape
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:

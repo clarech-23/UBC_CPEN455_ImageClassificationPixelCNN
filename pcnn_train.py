@@ -152,6 +152,7 @@ if __name__ == '__main__':
 
     elif "cpen455" in args.dataset:
         print("CPEN455")
+        print(model_name)
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
                                                                   mode = 'train',
@@ -247,4 +248,9 @@ if __name__ == '__main__':
         if (epoch + 1) % args.save_interval == 0:
             if not os.path.exists("models"):
                 os.makedirs("models")
-            torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch))
+            # torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch)) # TODO: Changes here
+            print("MODEL SAVING...")
+            torch.save(model.state_dict(), 'models/conditional_pixelcnn.pth')
+
+        # print("MODEL SAVING...")
+        # torch.save(model.state_dict(), 'models/conditional_pixelcnn.pth')

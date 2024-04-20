@@ -61,6 +61,7 @@ def discretized_mix_logistic_loss(x, l):
                 coeffs[:, :, :, 2, :] * x[:, :, :, 1, :]).view(xs[0], xs[1], xs[2], 1, nr_mix)
 
     means = torch.cat((means[:, :, :, 0, :].unsqueeze(3), m2, m3), dim=3)
+
     centered_x = x - means
     inv_stdv = torch.exp(-log_scales)
     plus_in = inv_stdv * (centered_x + 1. / 255.)
@@ -72,6 +73,8 @@ def discretized_mix_logistic_loss(x, l):
     # log probability for edge case of 255 (before scaling)
     log_one_minus_cdf_min = -F.softplus(min_in)
     cdf_delta = cdf_plus - cdf_min  # probability for all other cases
+
+    ### FOR NUMERICAL STABILITY ###
     mid_in = inv_stdv * centered_x
     # log probability in the center of the bin, to be used in extreme cases
     # (not actually used in our code)
@@ -96,9 +99,13 @@ def discretized_mix_logistic_loss(x, l):
     inner_out        = inner_cond * log_one_minus_cdf_min + (1. - inner_cond) * inner_inner_out
     cond             = (x < -0.999).float()
     log_probs        = cond * log_cdf_plus + (1. - cond) * inner_out
+    ###############################
+
     log_probs        = torch.sum(log_probs, dim=3) + log_prob_from_logits(logit_probs)
-    
+
+    # TODO: Changes here
     return -torch.sum(log_sum_exp(log_probs))
+    #return -torch.sum(log_sum_exp(log_probs),[1,2])  # TODO: Maybe we just need to change this
 
 
 def to_one_hot(tensor, n, fill_with=1.):
@@ -179,11 +186,11 @@ def sample(model, sample_batch_size, obs, sample_op):
     with torch.no_grad():
         data = torch.zeros(sample_batch_size, obs[0], obs[1], obs[2])
         data = data.to(next(model.parameters()).device)
-        labels = ['Class1', 'Class3', 'Class0', 'Class2', 'Class2', 'Class1', 'Class1', 'Class0', 'Class0', 'Class0', 'Class0', 'Class1', 'Class3', 'Class1', 'Class3', 'Class3']
+        # labels = ['Class1', 'Class3', 'Class0', 'Class2', 'Class2', 'Class1', 'Class1', 'Class0', 'Class0', 'Class0', 'Class0', 'Class1', 'Class3', 'Class1', 'Class3', 'Class3']
         for i in range(obs[1]):
             for j in range(obs[2]):
                 data_v = data
-                out = model(data_v, labels, sample=True)
+                out = model(data_v, sample=True)
                 out_sample = sample_op(out)
                 data[:, :, i, j] = out_sample.data[:, :, i, j]
     return data
