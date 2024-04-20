@@ -19,15 +19,24 @@ NUM_CLASSES = len(my_bidict)
 # And get the predicted label, which is a tensor of shape (batch_size,)
 # Begin of your code
 def get_label(model, model_input, device):
-    labels = [0, 1, 2, 3]
-    labels = torch.tensor(labels, dtype=torch.int64, device=device)
-    logits = model(model_input, labels)
-    print(logits)
-    print(logits.size())
-    probs = torch.softmax(logits, dim=1)
-    predicted_labels = torch.argmax(probs, dim=1)
-    # answer = model(model_input, device)
-    return predicted_labels
+    print("Model shape: ", model_input.shape)
+    answer = []
+    for i in range(model_input.shape[0]):
+        loss_list = []
+        image = model_input[i].unsqueeze(0)
+        category_labels = [0, 1, 2, 3]
+        for category in category_labels:
+            category = torch.tensor(category, dtype=torch.int64).to(device).unsqueeze(0)
+            image_reconstructed = model(image, category)
+            loss = discretized_mix_logistic_loss(image, image_reconstructed)
+            loss_list.append(loss.item)
+            print("Loss: ", loss)
+            print("Reconstructed Image Shape: ", image_reconstructed.shape)
+
+        answer = 0
+        #answer = model(image, class_labels)
+
+    return
 # End of your code
 
 def classifier(model, data_loader, device):
@@ -58,7 +67,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     pprint(args.__dict__)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
+    kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':True}  # TODO: Change back to False?
 
     ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
     dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
@@ -71,7 +80,6 @@ if __name__ == '__main__':
     #Write your code here
     #You should replace the random classifier with your trained model
     #Begin of your code
-    #model = random_classifier(NUM_CLASSES)
     model = PixelCNN(nr_resnet=1, nr_filters=40, nr_logistic_mix=5)
     #End of your code
 

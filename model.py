@@ -73,6 +73,7 @@ class AbsolutePositionalEncoding(nn.Module):
         return:
             out: shape B x D
         """
+        print("x shape: ", x.shape)
         # Retrieve positional encoding for input positions
         position_encodings = self.position_embedding(x)
         return position_encodings
@@ -140,6 +141,7 @@ class PixelCNN(nn.Module):
             ape = transform(ape)
             # print("APE transformed shape: {}".format(ape.shape))
             x = x + ape
+
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
