@@ -74,7 +74,6 @@ def discretized_mix_logistic_loss(x, l):
     log_one_minus_cdf_min = -F.softplus(min_in)
     cdf_delta = cdf_plus - cdf_min  # probability for all other cases
 
-    ### FOR NUMERICAL STABILITY ###
     mid_in = inv_stdv * centered_x
     # log probability in the center of the bin, to be used in extreme cases
     # (not actually used in our code)
@@ -99,13 +98,11 @@ def discretized_mix_logistic_loss(x, l):
     inner_out        = inner_cond * log_one_minus_cdf_min + (1. - inner_cond) * inner_inner_out
     cond             = (x < -0.999).float()
     log_probs        = cond * log_cdf_plus + (1. - cond) * inner_out
-    ###############################
-
     log_probs        = torch.sum(log_probs, dim=3) + log_prob_from_logits(logit_probs)
 
     # TODO: Changes here
     return -torch.sum(log_sum_exp(log_probs))
-    #return -torch.sum(log_sum_exp(log_probs),[1,2])  # TODO: Maybe we just need to change this
+    #return -torch.sum(log_sum_exp(log_probs),[1,2])
 
 
 def to_one_hot(tensor, n, fill_with=1.):
@@ -186,11 +183,13 @@ def sample(model, sample_batch_size, obs, sample_op):
     with torch.no_grad():
         data = torch.zeros(sample_batch_size, obs[0], obs[1], obs[2])
         data = data.to(next(model.parameters()).device)
-        # labels = ['Class1', 'Class3', 'Class0', 'Class2', 'Class2', 'Class1', 'Class1', 'Class0', 'Class0', 'Class0', 'Class0', 'Class1', 'Class3', 'Class1', 'Class3', 'Class3']
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        placeholder_labels = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+        placeholder_labels = torch.tensor(placeholder_labels, dtype=torch.int64).to(device)
         for i in range(obs[1]):
             for j in range(obs[2]):
                 data_v = data
-                out = model(data_v, sample=True)
+                out = model(data_v, placeholder_labels, sample=True)
                 out_sample = sample_op(out)
                 data[:, :, i, j] = out_sample.data[:, :, i, j]
     return data

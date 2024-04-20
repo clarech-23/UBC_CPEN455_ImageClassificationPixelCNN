@@ -19,7 +19,11 @@ NUM_CLASSES = len(my_bidict)
 # And get the predicted label, which is a tensor of shape (batch_size,)
 # Begin of your code
 def get_label(model, model_input, device):
-    logits = model(model_input)
+    labels = [0, 1, 2, 3]
+    labels = torch.tensor(labels, dtype=torch.int64, device=device)
+    logits = model(model_input, labels)
+    print(logits)
+    print(logits.size())
     probs = torch.softmax(logits, dim=1)
     predicted_labels = torch.argmax(probs, dim=1)
     # answer = model(model_input, device)

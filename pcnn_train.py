@@ -24,9 +24,11 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
 
     for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, labels = item
+        model_input, categories = item
         model_input = model_input.to(device)
-        model_output = model(model_input, labels)
+        original_label = [my_bidict[item] for item in categories]
+        original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
+        model_output = model(model_input, original_label)
         loss = loss_op(model_input, model_output)
         loss_tracker.update(loss.item()/deno)
         if mode == 'training':
@@ -123,7 +125,6 @@ if __name__ == '__main__':
 
     # set data
     if "mnist" in args.dataset:
-        print("MNIST ")
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor(), rescaling, replicate_color_channel])
         train_loader = torch.utils.data.DataLoader(datasets.MNIST(args.data_dir, download=True,
                             train=True, transform=ds_transforms), batch_size=args.batch_size,
@@ -133,7 +134,6 @@ if __name__ == '__main__':
                         transform=ds_transforms), batch_size=args.batch_size, shuffle=True, **kwargs)
 
     elif "cifar" in args.dataset:
-        print("CIFAR ")
         ds_transforms = transforms.Compose([transforms.ToTensor(), rescaling])
         if args.dataset == "cifar10":
             train_loader = torch.utils.data.DataLoader(datasets.CIFAR10(args.data_dir, train=True,
@@ -151,8 +151,6 @@ if __name__ == '__main__':
             raise Exception('{} dataset not in {cifar10, cifar100}'.format(args.dataset))
 
     elif "cpen455" in args.dataset:
-        print("CPEN455")
-        print(model_name)
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir,
                                                                   mode = 'train',
@@ -249,8 +247,4 @@ if __name__ == '__main__':
             if not os.path.exists("models"):
                 os.makedirs("models")
             # torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch)) # TODO: Changes here
-            print("MODEL SAVING...")
             torch.save(model.state_dict(), 'models/conditional_pixelcnn.pth')
-
-        # print("MODEL SAVING...")
-        # torch.save(model.state_dict(), 'models/conditional_pixelcnn.pth')

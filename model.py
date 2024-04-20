@@ -127,13 +127,9 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
     def forward(self, x, labels=None, sample=False):
-        if labels is not None:
-            # TODO: Input of APE should be B int nums
-            labels_int = [my_bidict[label] for label in labels]
-            labels_int = torch.LongTensor(labels_int).to(device=x.device)
-
+        if labels is not None:  # TODO: Remove this
             # TODO: Absolute Positional Encoding
-            ape = self.positional_encoding(labels_int)
+            ape = self.positional_encoding(labels)
             # print("APE shape: {}".format(ape.shape))
             # print("x shape: {}".format(x.shape))
 
