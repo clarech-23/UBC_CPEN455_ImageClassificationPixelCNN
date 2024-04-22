@@ -19,24 +19,21 @@ NUM_CLASSES = len(my_bidict)
 # And get the predicted label, which is a tensor of shape (batch_size,)
 # Begin of your code
 def get_label(model, model_input, device):
-    print("Model shape: ", model_input.shape)
-    answer = []
+    answer = torch.tensor([], dtype=torch.int64).to(device)
     for i in range(model_input.shape[0]):
-        loss_list = []
+        loss_tensor = torch.tensor([], dtype=torch.int64).to(device)
         image = model_input[i].unsqueeze(0)
         category_labels = [0, 1, 2, 3]
         for category in category_labels:
             category = torch.tensor(category, dtype=torch.int64).to(device).unsqueeze(0)
             image_reconstructed = model(image, category)
-            loss = discretized_mix_logistic_loss(image, image_reconstructed)
-            loss_list.append(loss.item)
-            print("Loss: ", loss)
-            print("Reconstructed Image Shape: ", image_reconstructed.shape)
+            loss = discretized_mix_logistic_loss(image, image_reconstructed).unsqueeze(0)
+            loss_tensor = torch.cat((loss_tensor, loss), dim=0)
 
-        answer = 0
-        #answer = model(image, class_labels)
+        ans = torch.argmin(loss_tensor).unsqueeze(0)
+        answer = torch.cat((answer, ans), dim=0)
 
-    return
+    return answer
 # End of your code
 
 def classifier(model, data_loader, device):
