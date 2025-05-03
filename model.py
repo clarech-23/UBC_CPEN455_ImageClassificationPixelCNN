@@ -58,7 +58,6 @@ class PixelCNNLayer_down(nn.Module):
         return u, ul
 
 
-# TODO: FIX LATER
 class AbsolutePositionalEncoding(nn.Module):
 
     def __init__(self, d_model):
@@ -127,13 +126,10 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
     def forward(self, x, labels=None, sample=False):
-        # if labels is not None:  # TODO: Remove this
-        # TODO: Absolute Positional Encoding
         ape = self.positional_encoding(labels)
                 # print("APE shape: {}".format(ape.shape))
                 # print("x shape: {}".format(x.shape))
 
-        # TODO: Add Positional Embedding
         ape = ape.unsqueeze(-1).unsqueeze(-1)  # Add two dimensions at the end, so shape becomes [B, D, 1, 1]
         ape = ape.expand(-1, -1, 32, 32)  # Expand to match the spatial dimensions of x, shape becomes [B, D, H, W] # TODO: CHANGE THE 32
         transform = nn.Conv2d(ape.shape[1], x.shape[1], kernel_size=1).to(ape.device)  # Using a 1x1 conv to match the channels
